@@ -11,7 +11,7 @@ connectDB();
 const app = express();
 
 const corsOptions = {
-  origin: ["http://localhost:3000", "*"],
+  origin: ["http://localhost:3000", "https://counselling-bs5ba01fx-controlf5.vercel.app","*"],
   credentials: true,
 };
 
