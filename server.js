@@ -11,7 +11,7 @@ connectDB();
 const app = express();
 
 const corsOptions = {
-  origin: ["http://localhost:3000", "https://counselling-bs5ba01fx-controlf5.vercel.app","*"],
+  origin: ["http://localhost:3000", "https://counselling-bs5ba01fx-controlf5.vercel.app", "https://counselling-git-main-controlf5.vercel.app", "*"],
   credentials: true,
 };
 
@@ -31,6 +31,7 @@ app.use("/api/auth", require("./Route/AuthRouter"));
 app.use("/api/collage", require("./Route/CollageRouter"));
 app.use("/api/course", require("./Route/CourseRouter"));
 app.use("/api/choice", require("./Route/ChoiceFillingRouter"));
+app.use("/api/counselor", require("./Route/CounselorRouter"));
 
 const PORT = process.env.PORT || 4000;
 

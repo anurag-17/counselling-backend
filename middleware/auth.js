@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../Model/User");
 const ErrorResponse = require("../Utils/errorRes");
 const Admin = require("../Model/AdminModel");
+const Counselor = require("../Model/CounselorModel");
 
 exports.isAuthenticatedUser = async (req, res, next) => {
   const authorizationHeader = req.headers.authorization;
@@ -20,8 +21,10 @@ exports.isAuthenticatedUser = async (req, res, next) => {
 
     if (decodedData.role === 'admin') {
       user = await Admin.findById(decodedData.id);
+    } else if (decodedData.role === 'counselor') {
+      user = await Counselor.findById(decodedData.id);
     } else {
-      user = await User.findById(decodedData.id);
+      return next(new ErrorResponse("Invalid role in token", 401));
     }
 
     if (!user) {
