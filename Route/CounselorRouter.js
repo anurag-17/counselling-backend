@@ -5,6 +5,7 @@ const { isAuthenticatedUser, authorizeRoles } = require("../middleware/auth");
 const {
     registerCounselor,
     counselorLogin,
+    logoutCounselor,
     verifyCounselor,
     updateCounselor,
     getAllCounselors,
@@ -19,6 +20,8 @@ const {
 router.post("/addCounselor", registerCounselor);
 
 router.post("/counselorLogin", counselorLogin);
+
+router.get("/logoutCounselor",isAuthenticatedUser, logoutCounselor);
 
 router.get("/verifyCounselor/:token", verifyCounselor);
 

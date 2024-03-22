@@ -79,6 +79,57 @@ exports.counselorLogin = async (req, res, next) => {
   }
 };
 
+exports.logoutCounselor = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader) {
+      token = authHeader;
+    }
+    
+    if (!token) {
+      return res
+        .status(401)
+        .json({ message: "Please login to access this resource" });
+    }
+
+    const decodedData = jwt.verify(token, process.env.JWT_SECRET);
+
+    const counselorData = await Counselor.findOne({_id:decodedData?.id});
+
+    if (counselorData.activeToken && counselorData.activeToken === token) {
+      const counselor = await Counselor.findOneAndUpdate(
+        { _id: decodedData.id, activeToken: token },
+        { $unset: { activeToken: "" } },
+        { new: true }
+      );
+      if (!counselor) {
+        return res
+          .status(401)
+          .json({ message: "Invalid session or token, please login again" });
+      }
+      return res.status(200).json({
+        message: `${counselorData._id} is Logout Successfully`,
+      });
+    } else {
+      return res
+        .status(401)
+        .json({ message: "Token expired, please login again" });
+    }
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res
+        .status(401)
+        .json({ message: "Token expired, please login again" });
+    } else if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ message: "Invalid token" });
+    } else {
+      console.error("Other error:", error);
+      return res.status(500).json({ message: "Server error" });
+    }
+  }
+};
+
 exports.verifyCounselor = async (req, res) => {
   const { token } = req.params;
 
