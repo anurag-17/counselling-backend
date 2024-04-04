@@ -32,6 +32,7 @@ app.use("/api/collage", require("./Route/CollageRouter"));
 app.use("/api/course", require("./Route/CourseRouter"));
 app.use("/api/choice", require("./Route/ChoiceFillingRouter"));
 app.use("/api/counselor", require("./Route/CounselorRouter"));
+app.use("/api/news", require("./Route/NewsRouter"));
 
 const PORT = process.env.PORT || 4000;
 

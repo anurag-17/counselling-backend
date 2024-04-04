@@ -3,6 +3,7 @@ const User = require("../Model/User");
 const ErrorResponse = require("../Utils/errorRes");
 const Admin = require("../Model/AdminModel");
 const Counselor = require("../Model/CounselorModel");
+const SuperAdmin = require("../Model/SuperAdminModel");
 
 exports.isAuthenticatedUser = async (req, res, next) => {
   const authorizationHeader = req.headers.authorization;
@@ -23,6 +24,8 @@ exports.isAuthenticatedUser = async (req, res, next) => {
       user = await Admin.findById(decodedData.id);
     } else if (decodedData.role === 'counselor') {
       user = await Counselor.findById(decodedData.id);
+    } else if (decodedData.role === 'super-admin') {
+      user = await SuperAdmin.findById(decodedData.id);
     } else {
       return next(new ErrorResponse("Invalid role in token", 401));
     }

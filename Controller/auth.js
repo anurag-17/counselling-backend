@@ -1,5 +1,6 @@
 const User = require("../Model/User");
 const Admin = require("../Model/AdminModel");
+const SuperAdmin = require("../Model/SuperAdminModel");
 const OTP = require("../Model/OtpModel")
 const sendEmail = require("../Utils/SendEmail");
 const validateMongoDbId = require("../Utils/validateMongodbId");
@@ -162,7 +163,34 @@ exports.adminRegister = async (req, res, next) => {
     next(error);
   }
 };
+exports.superAdminRegister = async (req, res, next) => {
+  const { email, password } = req.body;
 
+  const existingUser = await SuperAdmin.findOne({ email });
+
+  if (existingUser) {
+    return res.status(203).json({ error: "Super Admin with this email already exists." });
+  }
+
+  const userData = {
+    email,
+    firstname: req.body.firstname,
+    lastname: req.body.lastname,
+    mobile: req.body.mobile,
+    role: req.body.role
+  };
+
+  if (password) {
+    userData.password = password;
+  }
+
+  try {
+    const newUser = await SuperAdmin.create(userData);
+    sendToken(newUser, 201, res);
+  } catch (error) {
+    next(error);
+  }
+};
 exports.adminLogin = async (req, res, next) => {
   const { email, password } = req.body;
   
@@ -193,6 +221,53 @@ exports.adminLogin = async (req, res, next) => {
           firstname: findAdmin.firstname,
           lastname: findAdmin.lastname,
           email: findAdmin.email,
+        },
+        token: token,
+      };
+
+      return res.status(200).json(user);
+    } else {
+      throw new Error("Invalid Credentials");
+    }
+  } catch (error) {
+    res.status(401).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+exports.superAdminLogin = async (req, res, next) => {
+  const { email, password } = req.body;
+  
+  try {
+    const findAdmin = await SuperAdmin.findOne({ email }).select("+password");
+    
+    if (!findAdmin) {
+      throw new Error("SuperAdmin not found");
+    }
+
+    if (findAdmin.role !== "super-admin") {
+      throw new Error("Not Authorized");
+    }
+
+    if (await findAdmin.matchPasswords(password)) {
+      // const token = generateToken({ id: findAdmin._id });
+      const token = generateToken(findAdmin._id, findAdmin.role);
+
+      await SuperAdmin.findByIdAndUpdate(
+        { _id: findAdmin._id?.toString() },
+        { activeToken: token },
+        { new: true }
+      );
+      const user = {
+        success: true,
+        user: {
+          _id: findAdmin._id,
+          firstname: findAdmin.firstname,
+          lastname: findAdmin.lastname,
+          email: findAdmin.email,
+          role: findAdmin.role
         },
         token: token,
       };
@@ -280,6 +355,57 @@ exports.adminLogout = async (req, res) => {
 
     if (userData.activeToken && userData.activeToken === token) {
       const user = await Admin.findOneAndUpdate(
+        { _id: decodedData.id, activeToken: token },
+        { $unset: { activeToken: "" } },
+        { new: true }
+      );
+      if (!user) {
+        return res
+          .status(401)
+          .json({ message: "Invalid session or token, please login again" });
+      }
+      return res.status(200).json({
+        message: `${userData._id} is Logout Successfully`,
+      });
+    } else {
+      return res
+        .status(401)
+        .json({ message: "Token expired, please login again" });
+    }
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res
+        .status(401)
+        .json({ message: "Token expired, please login again" });
+    } else if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ message: "Invalid token" });
+    } else {
+      console.error("Other error:", error);
+      return res.status(500).json({ message: "Server error" });
+    }
+  }
+};
+
+exports.superAdminLogout = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader) {
+      token = authHeader;
+    }
+    
+    if (!token) {
+      return res
+        .status(401)
+        .json({ message: "Please login to access this resource" });
+    }
+
+    const decodedData = jwt.verify(token, process.env.JWT_SECRET);
+
+    const userData = await SuperAdmin.findOne({_id:decodedData?.id});
+
+    if (userData.activeToken && userData.activeToken === token) {
+      const user = await SuperAdmin.findOneAndUpdate(
         { _id: decodedData.id, activeToken: token },
         { $unset: { activeToken: "" } },
         { new: true }
@@ -545,6 +671,14 @@ exports.updatedUser = async (req, res) => {
     throw new Error(error);
   }
 };
+exports.superAdminUpdate = async (req, res) => {
+  try {
+    const updatedUser = await SuperAdmin.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updatedUser);
+  } catch (error) {
+    throw new Error(error);
+  }
+};
 
 exports.getallUser = async (req, res) => {
   try {
@@ -567,6 +701,46 @@ exports.getallUser = async (req, res) => {
 
     // Count total items
     const totalItems = await User.countDocuments(userQuery);
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+    const skip = (currentPage - 1) * itemsPerPage;
+    const users = await userQuery.sort({ firstname: 1 }).skip(skip).limit(itemsPerPage).exec();
+
+    res.json({
+      totalItems,
+      totalPages,
+      currentPage,
+      users,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.getallSuperAdmin = async (req, res) => {
+  try {
+    const { page = 1, limit = 10} = req.query;
+    const searchQuery = req.query.search;
+    
+    const currentPage = parseInt(page, 10);
+    const itemsPerPage = parseInt(limit, 10);
+
+    const userQuery = SuperAdmin.find()
+
+    if (searchQuery) {
+      userQuery.or([
+        { firstname: { $regex: new RegExp(searchQuery, "i") } },
+        { lastname: { $regex: new RegExp(searchQuery, "i") } },
+        { email: { $regex: new RegExp(searchQuery, "i") } },
+        { mobile: { $regex: new RegExp(searchQuery, "i") } },
+      ]);
+    }
+
+    // Count total items
+    const totalItems = await SuperAdmin.countDocuments(userQuery);
 
     // Calculate total pages
     const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -611,12 +785,37 @@ exports.getUserById = async (req, res) => {
   }
 };
 
+exports.getSuperAdminById = async (req, res) => {
+  try {
+    const user = await SuperAdmin.findById(req.params.id);
+    res.status(200).json({
+      user,
+    });
+  } catch (error) {
+    throw new Error(error);
+  }
+};
+
 exports.deleteaUser = async (req, res) => {
   const { id } = req.params;
   validateMongoDbId(id);
 
   try {
     const deleteaUser = await User.findByIdAndDelete(id);
+    res.json({
+      deleteaUser,
+    });
+  } catch (error) {
+    throw new Error(error);
+  }
+};
+
+exports.deleteaSuperAdmin = async (req, res) => {
+  const { id } = req.params;
+  validateMongoDbId(id);
+
+  try {
+    const deleteaUser = await SuperAdmin.findByIdAndDelete(id);
     res.json({
       deleteaUser,
     });

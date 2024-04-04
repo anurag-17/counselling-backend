@@ -4,9 +4,12 @@ const multer = require('multer');
 const {
   register,
   adminRegister,
+  superAdminRegister,
   login,
   adminLogin,
+  superAdminLogin,
   logout,
+  superAdminLogout,
   adminLogout,
   forgotPassword,
   resetPassword,
@@ -18,7 +21,11 @@ const {
   updatePassword,
   uploadImage,
   verifyUser,
+  superAdminUpdate,
   verifyAdmin,
+  getallSuperAdmin,
+  getSuperAdminById,
+  deleteaSuperAdmin,
   addToWishlist,
   deleteAllWishlistItems,
   removeFromWishlist,
@@ -33,9 +40,13 @@ router.route("/login").post(login);
 
 router.route("/adminLogin").post(adminLogin);
 
+router.route("/superAdminLogin").post(superAdminLogin);
+
 router.route("/logout").get(isAuthenticatedUser, logout);
 
 router.route("/adminLogout").get(isAuthenticatedUser, adminLogout);
+
+router.route("/superAdminLogout").get(isAuthenticatedUser, superAdminLogout);
 
 router.route("/verifyUserToken/:token").get(verifyUser);
 
@@ -50,14 +61,20 @@ router.route("/register").post(register);
 
 router.route("/adminRegister").post(adminRegister);
 
+router.route("/superAdminRegister").post(superAdminRegister);
+
 // Update User Password
 router.post("/updatePassword", isAuthenticatedUser, updatePassword);
 
 // Update User
 router.put("/edit-user/:id",isAuthenticatedUser, updatedUser);
 
+router.put("/superAdminUpdate/:id",isAuthenticatedUser, superAdminUpdate);
+
 // Get all Users
 router.get("/all-users", isAuthenticatedUser, authorizeRoles("admin"), getallUser);
+
+router.get("/getallSuperAdmin", getallSuperAdmin);
 
 // Get a User
 router.route("/getaUser").get(isAuthenticatedUser, getaUser);
@@ -65,8 +82,12 @@ router.route("/getaUser").get(isAuthenticatedUser, getaUser);
 // Get user by ID 
 router.route("/getUserById/:id").get(isAuthenticatedUser, getUserById);
 
+router.route("/getSuperAdminById/:id").get(isAuthenticatedUser, getSuperAdminById);
+
 // Delete a user
 router.delete("/deleteaUser/:id",isAuthenticatedUser, authorizeRoles("admin"), deleteaUser);
+
+router.delete("/deleteaSuperAdmin/:id",isAuthenticatedUser, deleteaSuperAdmin);
 
 router.route("/forgotpassword").post(forgotPassword);
 router.route("/resetpassword/:resetToken").put(resetPassword);
